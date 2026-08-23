@@ -251,6 +251,36 @@ server.tool('opendatasoft_universal_health_check', 'Check whether an OpenDataSof
   }
 });
 
+server.tool('opendatasoft_universal_check_schema', 'Compare expected field names against the current OpenDataSoft dataset schema.', {
+  portal_url: z.string().url(),
+  dataset: z.string(),
+  expected_fields: z.array(z.string()).min(1).describe('Field names expected by your integration.'),
+}, async ({ portal_url, dataset, expected_fields }) => {
+  try {
+    const url = new URL(`${normalizePortalUrl(portal_url)}/api/explore/v2.1/catalog/datasets`);
+    url.searchParams.set('where', `dataset_id = '${dataset.replace(/'/g, "''")}'`);
+    url.searchParams.set('limit', '1');
+    const metadata = await fetchJson<{ results?: Array<{ fields?: Array<{ name?: string; type?: string; label?: string }> }> }>(url.toString());
+    const fields = metadata.results?.[0]?.fields ?? [];
+    const currentFields = fields.map((field) => field.name).filter((field): field is string => Boolean(field));
+    const missing = expected_fields.filter((field) => !currentFields.includes(field));
+    const unexpected = currentFields.filter((field) => !expected_fields.includes(field));
+
+    return jsonResult({
+      portal_url,
+      dataset,
+      ok: missing.length === 0,
+      expected_fields,
+      current_fields: currentFields,
+      missing_fields: missing,
+      unexpected_fields: unexpected,
+      field_details: fields,
+    });
+  } catch (error) {
+    return errorResult(error instanceof Error ? error.message : 'Failed to check schema');
+  }
+});
+
 
 async function main(): Promise<void> {
   await server.connect(new StdioServerTransport());
