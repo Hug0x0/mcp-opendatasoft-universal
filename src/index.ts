@@ -226,6 +226,31 @@ server.tool('opendatasoft_universal_aggregate_records', 'Run an OpenDataSoft Exp
   }
 });
 
+server.tool('opendatasoft_universal_health_check', 'Check whether an OpenDataSoft portal and optional dataset are reachable through Explore v2.1.', {
+  portal_url: z.string().url(),
+  dataset: z.string().optional().describe('Optional dataset id to test with a one-record query.'),
+}, async ({ portal_url, dataset }) => {
+  try {
+    const catalogUrl = new URL(`${normalizePortalUrl(portal_url)}/api/explore/v2.1/catalog/datasets`);
+    catalogUrl.searchParams.set('limit', '1');
+    const catalog = await fetchJson<Record<string, unknown>>(catalogUrl.toString());
+    const datasetProbe = dataset
+      ? await odsRecords(portal_url, dataset, { limit: 1 })
+      : undefined;
+
+    return jsonResult({
+      portal_url,
+      portal_ok: true,
+      catalog_sample: catalog,
+      dataset: dataset ?? null,
+      dataset_ok: dataset ? true : null,
+      dataset_sample: datasetProbe,
+    });
+  } catch (error) {
+    return errorResult(error instanceof Error ? error.message : 'OpenDataSoft health check failed');
+  }
+});
+
 
 async function main(): Promise<void> {
   await server.connect(new StdioServerTransport());

@@ -6,7 +6,7 @@ Universal MCP server for querying any OpenDataSoft Explore v2.1 portal.
 
 Run the MCP and call `opendatasoft_universal_get_sources` first to inspect source coverage. This server also exposes domain-specific tools for the topic described above.
 
-Core tools include catalog search, dataset inspection, record queries, and aggregate queries for any OpenDataSoft Explore v2.1 portal.
+Core tools include catalog search, dataset inspection, record queries, aggregate queries, and portal/dataset health checks for any OpenDataSoft Explore v2.1 portal.
 
 ## Install
 
