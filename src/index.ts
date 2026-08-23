@@ -127,6 +127,14 @@ async function odsRecords(portalUrl: string, dataset: string, params: Record<str
   return fetchJson<Record<string, unknown>>(url.toString());
 }
 
+async function odsAggregates(portalUrl: string, dataset: string, params: Record<string, string | number | undefined>) {
+  const url = new URL(`${normalizePortalUrl(portalUrl)}/api/explore/v2.1/catalog/datasets/${encodeURIComponent(dataset)}/aggregates`);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') url.searchParams.set(key, String(value));
+  }
+  return fetchJson<Record<string, unknown>>(url.toString());
+}
+
 const server = new McpServer({ name: CONFIG.name, version: '0.1.0' });
 
 server.tool(
@@ -196,6 +204,26 @@ server.tool('opendatasoft_universal_query_records', 'Query records from any Open
 }, async ({ portal_url, dataset, where, select, order_by, limit }) => {
   try { return jsonResult({ portal_url, dataset, result: await odsRecords(portal_url, dataset, { where, select, order_by, limit }) }); }
   catch (error) { return errorResult(error instanceof Error ? error.message : 'Failed to query records'); }
+});
+
+server.tool('opendatasoft_universal_aggregate_records', 'Run an OpenDataSoft Explore v2.1 aggregate query on any dataset.', {
+  portal_url: z.string().url(),
+  dataset: z.string(),
+  select: z.string().describe('Aggregate select expression, e.g. "count(*)", "sum(population)", "avg(value)".'),
+  where: z.string().optional(),
+  group_by: z.string().optional(),
+  order_by: z.string().optional(),
+  limit: z.number().int().min(1).max(100).default(10),
+}, async ({ portal_url, dataset, select, where, group_by, order_by, limit }) => {
+  try {
+    return jsonResult({
+      portal_url,
+      dataset,
+      result: await odsAggregates(portal_url, dataset, { select, where, group_by, order_by, limit }),
+    });
+  } catch (error) {
+    return errorResult(error instanceof Error ? error.message : 'Failed to aggregate records');
+  }
 });
 
 
